@@ -77,23 +77,21 @@ table(jobs_test$fraudulent) %>% prop.table()
 # Five Exploratory Plots/Tables
 
 1. This plot explores the required_experience variable as it pertains to the fraudulent variable.
-```{r}
+```{r, fig.width=9}
 jobs_train %>%
-  ggplot(aes(x = as.factor(fraudulent), fill = required_experience)) +
-  geom_bar() +
-  scale_y_log10() +
-  ggtitle("Fraudulent Versus Legitimate Job Postings, by Required Experience", subtitle = "Y Axis on Log Scale") +
-  labs(x = "Fraudulent")
+  ggplot(aes(x = required_experience, fill = as.factor(fraudulent))) +
+  geom_bar(position = "fill") +
+  ggtitle("Fraudulent Versus Legitimate Job Postings, by Required Experience") +
+  labs(x = "Required Experience", y = "Proportion", fill = "Fraudulent")
 ```
 
 2. This plot explore the has_company_logo variable as it pertain to the fraudulent variable.
 ```{r}
 jobs_train %>%
-  ggplot(aes(x = as.factor(fraudulent))) +
-  geom_bar(aes(fill = as.factor(has_company_logo))) +
-  scale_y_log10() +
-  ggtitle("Fraudulent Versus Legitimate Job Postings, by Inclusion of Company Logo", subtitle = "Y Axis on Log Scale") +
-  labs(x = "Fraudulent", fill= "Has Company Logo")
+  ggplot(aes(x = as.factor(has_company_logo))) +
+  geom_bar(aes(fill = as.factor(fraudulent)), position = "fill") +
+  ggtitle("Fraudulent Versus Legitimate Job Postings, by Inclusion of Company Logo") +
+  labs(x = "Has Company Logo", fill= "Fraudulent")
 ```
 
 3. This table shows that a job posting is overwhelmingly likely to be legitimate if it contains the company logo and has questions.
