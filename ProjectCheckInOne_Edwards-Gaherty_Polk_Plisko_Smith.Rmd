@@ -54,15 +54,80 @@ theme_set(theme_minimal())
 fake_job_postings <- read_csv("fake_job_postings.csv")
 ```
 
-# Five Exploratory Plots/Tables
+# Splitting the Data into Train and Test
 ```{r}
-job_postings %>%
-ggplot(aes(x = fraudulent, fill = required_experience)) +
-         geom_bar()
+jobs <- fake_job_postings
+
+#divide into training and testing
+set.seed(253) #first set the seed!
+jobs_split <- initial_split(jobs, prop = .7, 
+                             strata = fraudulent)
+jobs_train <- training(jobs_split)
+jobs_test <- testing(jobs_split)
+
+#distribution of response for the training data
+table(jobs_train$fraudulent) %>% prop.table()
+
+#distribution of response for testing data
+table(jobs_test$fraudulent) %>% prop.table()
+
 ```
+
+
+# Five Exploratory Plots/Tables
+
+1. This plot explores the required_experience variable as it pertains to the fraudulent variable.
+```{r}
+jobs_train %>%
+  ggplot(aes(x = as.factor(fraudulent), fill = required_experience)) +
+  geom_bar() +
+  scale_y_log10() +
+  ggtitle("Fraudulent Versus Legitimate Job Postings, by Required Experience", subtitle = "Y Axis on Log Scale") +
+  labs(x = "Fraudulent")
+```
+
+2. This plot explore the has_company_logo variable as it pertain to the fraudulent variable.
+```{r}
+jobs_train %>%
+  ggplot(aes(x = as.factor(fraudulent))) +
+  geom_bar(aes(fill = as.factor(has_company_logo))) +
+  scale_y_log10() +
+  ggtitle("Fraudulent Versus Legitimate Job Postings, by Inclusion of Company Logo", subtitle = "Y Axis on Log Scale") +
+  labs(x = "Fraudulent", fill= "Has Company Logo")
+```
+
+3. This table shows that a job posting is overwhelmingly likely to be legitimate if it contains the company logo and has questions.
+```{r}
+jobs_train %>%
+  filter(has_company_logo == 1, has_questions == 1) %>%
+  count(fraudulent)
+```
+
+
+4. This plot filters for job location within the United States, showing that more than half of the job postings within the data are domestic.
+```{r}
+jobs_train %>%
+  filter(str_detect(location, 'US')) %>%
+  ggplot(aes(x = as.factor(fraudulent))) +
+  geom_bar() +
+  ggtitle("Fraudulent Versus Legitimate Job Postings, United States") +
+  labs(x = "Fraudulent")
+```
+
+5. We think that delving deeper into the text input variables will help us create the best model. Below, we use the string detect function to filter by job postings that contain the word "must" in them, and the table shows the ratio of fraudulent postings, which remains consistent with the rest of the dataset.
+```{r}
+jobs_train %>%
+  filter(str_detect(requirements, 'must')) %>%
+  count(fraudulent)
+```
+
+
+
 
 # Research Questions
 What are some universal signs of a fraudulent job posting?
 
 What classification model best identifies the fraudulent job postings in the dataset? 
+
+Can our model translate to detection of other fraudulent things like scam/spam email?
 
