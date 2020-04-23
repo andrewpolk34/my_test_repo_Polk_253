@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
 ```{r, echo=FALSE}
@@ -107,7 +107,7 @@ jobs_train %>%
 4. This plot filters for job location within the United States, showing that more than half of the job postings within the data are domestic.
 ```{r}
 jobs_train %>%
-  filter(str_detect(location, 'US')) %>%
+  filter(str_detect(location, 'US,')) %>%
   ggplot(aes(x = as.factor(fraudulent))) +
   geom_bar() +
   ggtitle("Fraudulent Versus Legitimate Job Postings, United States") +
