@@ -1,0 +1,146 @@
+---
+title: "For Real, or Fraud? Classification Modeling With Online Job Postings"
+author: "Liam Edwards-Gaherty, Matthew Plisko, Andrew Polk, Henry Smith"
+date: "4/23/2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+```{r, echo=FALSE}
+#plotting and exploring
+library(tidyverse) #for plotting and summarizing
+library(GGally) #for nice scatterplot matrix 
+library(ggridges) #for joy/ridge plots
+library(corrplot) #for basic correlation matrix plot
+library(naniar) #for exploring missing values
+library(pdp) #for partial dependence plots, MARS models
+library(rpart.plot) #for plotting decision trees
+library(vip) #for importance plots
+library(pROC) #for ROC curves
+library(plotROC) #for plotting ROC curves
+
+#making things look nice
+library(lubridate) #for nice dates
+library(knitr) #for nice tables
+library(scales) #for nice labels on graphs
+library(gridExtra) #for arranging plots
+library(broom) #for nice model output
+library(janitor) #for nice names
+
+#data
+library(ISLR) #for data
+library(moderndive) #for data
+library(rattle) #weather data
+library(fivethirtyeight) #candy data
+
+#modeling
+library(rsample) #for splitting data
+library(recipes) #for keeping track of transformations
+library(caret) #for modeling
+library(leaps) #for variable selection
+library(glmnet) #for LASSO
+library(earth) #for MARS models
+library(rpart) #for decision trees
+library(randomForest) #for bagging and random forests
+
+theme_set(theme_minimal())
+```
+
+```{r, echo=FALSE}
+jobs <- read_csv("fake_job_postings.csv")
+```
+
+```{r, echo=FALSE}
+jobs <- jobs %>%
+add_n_miss(label = "n_miss")
+jobs <- jobs %>%
+mutate_if(is.character, replace_na, replace = "Missing") %>%
+mutate(comp_prof_numchar = nchar(company_profile, type = "char", allowNA = FALSE, keepNA =NA),description_numchar = nchar(description, type = "char", allowNA = FALSE, keepNA =NA)) %>%
+mutate(domestic = sapply(strsplit(jobs$location, split = ',', fixed=TRUE), function(x) (x[1]))) %>% 
+mutate(domestic = ifelse(domestic == "US",1,0))
+
+jobs <- jobs %>%
+  group_by(description,requirements) %>%
+  mutate(count = (ifelse(is.na(description)==FALSE & is.na(requirements)==FALSE,n(),1000))) %>% replace_with_na(replace = list(count = 1000))
+
+#divide into training and testing
+set.seed(253) #first set the seed!
+jobs_split <- initial_split(jobs, prop = .7, 
+                             strata = fraudulent)
+jobs_train <- training(jobs_split)
+jobs_test <- testing(jobs_split)
+
+#distribution of response for the training data
+table(jobs_train$fraudulent) %>% prop.table()
+
+#distribution of response for testing data
+table(jobs_test$fraudulent) %>% prop.table()
+
+```
+
+# Introduction and Research Questions
+
+For our final project, we used a dataset from Kaggle containing 17,800 online job postings, of which about 5% are fraudulent, fake job postings. Our research questions are:
+
+What are some universal signs of a fraudulent job posting? 
+
+What classification model best identifies the fraudulent job postings in the dataset?
+
+# Data: Modifications and Challenges
+
+Since only 5% of the job postings are fraudulent, we need to develop a highly accurate classification model to identify the fraudulent postings at a statistically significant rate, or significantly above the No Information Rate. The data from Kaggle contains 17,800 observations with 18 variables. The response variable is called **fraudulent**; it is a binary variable, with 0 signifying a legitimate job posting and 1 signifying a fraudulent job posting. We made some modifications and additions to the dataset:
+* Replaced empty values with "Missing"
+* Generated a variable, **n_miss_all**, to count to amount of missing categories for each job posting
+* Generated variables that counted the amount of characters for the **company_profile** and **description** variables
+* Generated a binary variable, **domestic**, that designated a job as either domestic (US) or foreign
+* Generated a variable, **count**, ... Plisko?
+
+Below is a description of key variables we use in the plots, tables, and models that follow:
+
+[INSERT Henry's Variable Descriptions]
+
+#Exploratory Plots and Tables
+
+1. This plot explores the required_experience variable as it pertains to the fraudulent variable.
+```{r, fig.width=9}
+jobs_train %>%
+  ggplot(aes(x = required_experience, fill = as.factor(fraudulent))) +
+  geom_bar(position = "fill") +
+  ggtitle("Fraudulent Versus Legitimate Job Postings, by Required Experience") +
+  labs(x = "Required Experience", y = "Proportion", fill = "Fraudulent")
+```
+
+2. This plot explore the has_company_logo variable as it pertain to the fraudulent variable.
+```{r}
+jobs_train %>%
+  ggplot(aes(x = as.factor(has_company_logo))) +
+  geom_bar(aes(fill = as.factor(fraudulent)), position = "fill") +
+  ggtitle("Fraudulent Versus Legitimate Job Postings, by Inclusion of Company Logo") +
+  labs(x = "Has Company Logo", fill= "Fraudulent")
+```
+
+3. This table shows that a job posting is overwhelmingly likely to be legitimate if it contains the company logo and has questions.
+```{r}
+jobs_train %>%
+  filter(has_company_logo == 1, has_questions == 1) %>%
+  count(fraudulent)
+```
+
+
+4. This plot filters for job location within the United States, showing that more than half of the job postings within the data are domestic.
+```{r}
+jobs_train %>%
+  filter(str_detect(location, 'US,')) %>%
+  ggplot(aes(x = as.factor(fraudulent))) +
+  geom_bar() +
+  ggtitle("Fraudulent Versus Legitimate Job Postings, United States") +
+  labs(x = "Fraudulent")
+```
+
+
+
