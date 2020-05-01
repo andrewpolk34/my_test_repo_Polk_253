@@ -52,7 +52,8 @@ theme_set(theme_minimal())
 ```
 
 ```{r, echo=FALSE}
-jobs <- read_csv("fake_job_postings.csv")
+jobs <- read_csv("fake_job_postings.csv") %>%
+  mutate(employment_type_new = fct_recode(employment_type, full_time = "Full-time"))
 ```
 
 ```{r, echo=FALSE}
@@ -167,7 +168,7 @@ jobs_log_model_1 <- train(
     data = jobs_train,
     method = "glm",
     family = "binomial",
-    trControl = trainControl(method = "cv", number = 5),
+    trControl = trainControl(method = "cv", number = 5, sampling = "down"),
     metric = "Accuracy",
     na.action = na.omit
 )
@@ -256,7 +257,7 @@ confusionMatrix(data = as.factor(ifelse(predict(jobs_log_model_2$finalModel,
 set.seed(253)
 
 jobs_log_model_3 <- train(
-    as.factor(fraudulent) ~  description_numchar + comp_prof_numchar + domestic + employment_type + has_company_logo + n_miss_all + industry + required_education + required_experience + has_questions,
+    as.factor(fraudulent) ~  description_numchar + comp_prof_numchar + domestic + employment_type_new + has_company_logo + n_miss_all + industry + required_education + required_experience + has_questions,
     data = jobs_train,
     method = "glm",
     family = "binomial",
@@ -272,9 +273,37 @@ summary(jobs_log_model_3) %>%
   mutate(exp_coef = exp(Estimate))
 ```
 
+
+
 ```{r, echo=FALSE}
 jobs_log_model_3$results$Accuracy
 ```
+
+```{r}
+jobs_train %>%
+   mutate_if(is.character, as.factor) %>%
+   summary()
+```
+
+```{r}
+confusionMatrix(data = as.factor(ifelse(predict(jobs_log_model_3$finalModel, 
+                               type = "response") > 0.5, "1", "0")) ,
+                reference = as.factor(jobs_train$fraudulent),
+                positive = "1")
+length(as.factor(ifelse(predict(jobs_log_model_3$finalModel, 
+                               type = "response") > 0.1, "1", "0")))
+
+length(as.factor(jobs_train$fraudulent))
+```
+
+
+```{r}
+confusionMatrix(data = predict(jobs_log_model_3, 
+                               type = "raw"),
+                reference = as.factor(jobs_train$fraudulent),
+                positive = "1")
+```
+
 
 **Model 4: Lasso**
 
