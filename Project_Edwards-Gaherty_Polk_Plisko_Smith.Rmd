@@ -276,7 +276,52 @@ summary(jobs_log_model_3) %>%
 jobs_log_model_3$results$Accuracy
 ```
 
-**Model 4: Classification Tree**
+**Model 4: Lasso**
+
+```{r}
+set.seed(253)
+
+lambda_grid <- 10^seq(-4, -2, length = 100)
+
+jobs_lasso <- train(
+    as.factor(fraudulent) ~ telecommuting + has_company_logo + has_questions + employment_type + required_experience + required_education + n_miss_all + comp_prof_numchar + description_numchar + domestic + industry,
+    data = jobs_train,
+    method = "glmnet",
+    family = "binomial",
+    trControl = trainControl(method = "cv", number = 5),
+    tuneGrid = data.frame(alpha = 1, 
+                          lambda = lambda_grid),
+    metric = "Accuracy",
+    na.action = na.omit
+)
+```
+
+Plot of Lambda vs Accuracy
+```{r}
+jobs_lasso$results %>% 
+  ggplot(aes(x = lambda, y = Accuracy)) +
+  geom_line() +
+  scale_x_log10()
+```
+
+```{r, echo=FALSE}
+jobs_lasso$bestTune$lambda
+```
+
+```{r, echo=FALSE}
+jobs_lasso$results %>%
+  arrange(desc(Accuracy)) %>%
+  head(n = 1)
+```
+
+```{r, echo=FALSE}
+confusionMatrix(data = as.factor(ifelse(predict(jobs_lasso$finalModel,
+                               type = "response") > 0.5, "1", "0")) ,
+                reference = as.factor(jobs_train$fraudulent),
+                positive = "1")
+```
+
+**Model 5: Classification Tree**
 ```{r}
 set.seed(253)
 
@@ -314,7 +359,7 @@ confusionMatrix(data = as.factor(ifelse(predict(jobs_tree$finalModel,
                 positive = "1")
 ```
 
-**Model 5: Random Forest**
+**Model 6: Random Forest**
 ```{r}
 set.seed(253)
 
