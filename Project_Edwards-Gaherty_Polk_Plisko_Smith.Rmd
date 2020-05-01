@@ -107,7 +107,7 @@ Below is a description of key variables we use in the plots, tables, and models 
 #Exploratory Plots and Tables
 
 1. This plot explores the required_experience variable as it pertains to the fraudulent variable.
-```{r, fig.width=9}
+```{r, fig.width=9, echo=FALSE}
 jobs_train %>%
   ggplot(aes(x = required_experience, fill = as.factor(fraudulent))) +
   geom_bar(position = "fill") +
@@ -116,7 +116,7 @@ jobs_train %>%
 ```
 
 2. This plot explore the has_company_logo variable as it pertain to the fraudulent variable.
-```{r}
+```{r, echo=FALSE}
 jobs_train %>%
   ggplot(aes(x = as.factor(has_company_logo))) +
   geom_bar(aes(fill = as.factor(fraudulent)), position = "fill") +
@@ -125,7 +125,7 @@ jobs_train %>%
 ```
 
 3. This table shows that a job posting is overwhelmingly likely to be legitimate if it contains the company logo and has questions.
-```{r}
+```{r, echo=FALSE}
 jobs_train %>%
   filter(has_company_logo == 1, has_questions == 1) %>%
   count(fraudulent)
@@ -133,7 +133,7 @@ jobs_train %>%
 
 
 4. This plot filters for job location within the United States, showing that more than half of the job postings within the data are domestic.
-```{r}
+```{r, echo=FALSE}
 jobs_train %>%
   filter(str_detect(location, 'US,')) %>%
   ggplot(aes(x = as.factor(fraudulent))) +
@@ -142,5 +142,201 @@ jobs_train %>%
   labs(x = "Fraudulent")
 ```
 
+5. This plot shows that legitimate job postings have longer company profile descriptions.
+```{r, echo=FALSE}
+jobs_train %>%
+  ggplot(aes(x = as.factor(fraudulent), y = comp_prof_numchar)) +
+  geom_boxplot()
+```
+
+6. This plot shows that the same can't be said for job description character count; while the highest outliers are legitimate, the average number characters for fraudulent and legitimate job postings is similar.
+```{r, echo=FALSE}
+jobs_train %>%
+  ggplot(aes(x = as.factor(fraudulent), y = description_numchar)) +
+  geom_boxplot()
+```
+
+# Building Models
+
+**Model1: Log Model With Select Variables**
+```{r}
+set.seed(253)
+
+jobs_log_model_1 <- train(
+    as.factor(fraudulent) ~ telecommuting + has_company_logo + has_questions,
+    data = jobs_train,
+    method = "glm",
+    family = "binomial",
+    trControl = trainControl(method = "cv", number = 5),
+    metric = "Accuracy",
+    na.action = na.omit
+)
+
+summary(jobs_log_model_1) %>% 
+  coef() %>% 
+  tidy() %>% 
+  select(`.rownames`, Estimate) %>% 
+  mutate(exp_coef = exp(Estimate))
+```
+
+CV Accuracy:
+```{r, echo=FALSE}
+jobs_log_model_1$results$Accuracy
+```
+
+Confusion Matrix:
+```{r, echo=FALSE}
+confusionMatrix(data = predict(jobs_log_model_1, 
+                               type = "raw"),
+                reference = as.factor(jobs_train$fraudulent),
+                positive = "1")
+```
+
+ROC:
+```{r, echo=FALSE}
+#d = actual status, m = predicted probability
+jobs_train %>% 
+  mutate(PredStatus =  predict(jobs_log_model_1, type = "prob")$`1`) %>%
+  ggplot(aes(d = as.numeric(fraudulent), m = PredStatus)) + 
+  geom_roc(labelround = 2, size = 1,
+           linealpha = .5, pointalpha = .8) +
+  geom_abline(slope = 1, intercept = 0, color = "gray")
+```
+
+AUC:
+```{r, echo=FALSE}
+#roc(actual_class, predicted_probability)
+jobs_train %>% 
+  mutate(PredStatus =  predict(jobs_log_model_1, type = "prob")$`1`) %>%
+  roc(fraudulent ~ PredStatus, data=.) %>% 
+  auc()
+```
+
+**Model 2: Log Model With Other Variables**
+```{r}
+set.seed(253)
+
+jobs_log_model_2 <- train(
+    as.factor(fraudulent) ~ employment_type + required_experience + required_education,
+    data = jobs_train,
+    method = "glm",
+    family = "binomial",
+    trControl = trainControl(method = "cv", number = 5),
+    metric = "Accuracy",
+    na.action = na.omit
+)
+
+summary(jobs_log_model_2) %>% 
+  coef() %>% 
+  tidy() %>% 
+  select(`.rownames`, Estimate) %>% 
+  mutate(exp_coef = exp(Estimate))
+```
+
+CV Accuracy:
+```{r, echo=FALSE}
+jobs_log_model_2$results$Accuracy
+```
+
+Confusion Matrix
+```{r, echo=FALSE}
+confusionMatrix(data = as.factor(ifelse(predict(jobs_log_model_2$finalModel, 
+                               type = "response") > 0.5, "1", "0")) ,
+                reference = as.factor(jobs_train$fraudulent),
+                positive = "1")
+
+# length(as.factor(ifelse(predict(jobs_log_model_2$finalModel, 
+#                               type = "response") > 0.1, "1", "0")))
+
+#length(as.factor(jobs_train$fraudulent))
+```
+
+**Model 3: Log Model With All Relevant Variables **
+```{r}
+set.seed(253)
+
+jobs_log_model_3 <- train(
+    as.factor(fraudulent) ~  description_numchar + comp_prof_numchar + domestic + employment_type + has_company_logo + n_miss_all + industry + required_education + required_experience + has_questions,
+    data = jobs_train,
+    method = "glm",
+    family = "binomial",
+    trControl = trainControl(method = "cv", number = 5),
+    metric = "Accuracy",
+    na.action = na.omit
+)
+
+summary(jobs_log_model_3) %>% 
+  coef() %>% 
+  tidy() %>% 
+  select(`.rownames`, Estimate) %>% 
+  mutate(exp_coef = exp(Estimate))
+```
+
+```{r, echo=FALSE}
+jobs_log_model_3$results$Accuracy
+```
+
+**Model 4: Classification Tree**
+```{r}
+set.seed(253)
+
+jobs_tree <- train(
+  as.factor(fraudulent) ~ description_numchar + comp_prof_numchar + domestic + employment_type + has_company_logo + n_miss_all + industry + required_education + required_experience + has_questions,
+  data = jobs_train,
+  method = "rpart",
+  tuneGrid = data.frame(cp = seq(0, .05, length = 20)),
+  trControl = trainControl(method = "cv", number = 5),
+  metric = "Accuracy",
+  na.action = na.omit
+)
+```
+
+```{r, echo=FALSE}
+jobs_tree$results %>% 
+  ggplot(aes(x = cp, y = Accuracy)) +
+  geom_point()
+```
+
+```{r, echo=FALSE}
+jobs_tree$bestTune$cp
+```
+
+```{r, echo=FALSE}
+jobs_tree$results %>%
+  arrange(desc(Accuracy)) %>%
+  head(n = 1)
+```
+
+```{r, echo=FALSE}
+confusionMatrix(data = as.factor(ifelse(predict(jobs_tree$finalModel, 
+                               type = "response") > 0.5, "1", "0")) ,
+                reference = as.factor(jobs_train$fraudulent),
+                positive = "1")
+```
+
+**Model 5: Random Forest**
+```{r}
+set.seed(253)
+
+jobs_randf <- train(
+  as.factor(fraudulent) ~ description_numchar + comp_prof_numchar + domestic + employment_type + has_company_logo + n_miss_all + industry + required_education + required_experience + has_questions,
+  data = jobs_train, 
+  method = "rf",
+  trControl = trainControl(method = "oob"),
+  tuneGrid = data.frame(mtry = 10),
+  ntree = 100, 
+  nodesize = 5, 
+  metric = "Accuracy",
+  na.action = na.omit
+)
+```
+
+```{r, echo=FALSE}
+plot(jobs_randf$finalModel)
+```
+
+```{r, echo=FALSE}
+jobs_randf$results
+```
 
 
