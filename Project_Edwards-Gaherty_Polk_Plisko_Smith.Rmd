@@ -56,7 +56,7 @@ jobs <- read_csv("fake_job_postings.csv") %>%
   mutate(employment_type_new = fct_recode(employment_type, full_time = "Full-time"))
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, include=FALSE}
 jobs <- jobs %>%
 add_n_miss(label = "n_miss")
 jobs <- jobs %>%
@@ -99,13 +99,36 @@ Since only 5% of the job postings are fraudulent, we need to develop a highly ac
 * Generated a variable, **n_miss_all**, to count to amount of missing categories for each job posting
 * Generated variables that counted the amount of characters for the **company_profile** and **description** variables
 * Generated a binary variable, **domestic**, that designated a job as either domestic (US) or foreign
-* Generated a variable, **count**, ... Plisko?
+* Generated a variable, **count**, which tallies how many other job postings have the same description/requirements as other observations
 
 Below is a description of key variables we use in the plots, tables, and models that follow:
 
-[INSERT Henry's Variable Descriptions]
+| Variable | Definition |
+|-----------|-----------|
+|job_id| Numbers that signifies the unique  job posting |
+| title | Job title |
+| location |  Where the job is located|
+| department | Which department the job is posted in |
+| salary_range | Catagorical variable with different levels of salaries |
+| company_profile | Brief blurb that describes the company |
+| description | Brief blurb that describes the job|
+| requirements | Blurb that describes what is required for the job |
+| benefits | A description of the benefits of the job |
+|telecommuning | 1 if job is within the telecommunication field, 0 otherwise|
+|has_company_logo | 1 if job posting has logo on posting, 0 otherwise|
+| has_questions | 1 if job posting has a question in their posting, 0 otherwise|
+| employment_type | Whether the position is full-time or part-time |
+| required_education | What level of education is required for the job |
+| industry | the industry where the job is posted |
+| function | type of job |
+| fraudulent| 1 if job post is fake, 0 otherwise |
+|n_miss_all | Number of missing entries in the dataset |
+|comp_prof_numchar| Number of characters in the company description |
+|description_numchar| Number of characters in the description of the job |
+| domestic | 1 if the job is in the U.S., 0 otherwise |
+| count | Number of repeated jobs with the same description or requirements |
 
-#Exploratory Plots and Tables
+# Exploratory Plots
 
 1. This plot explores the required_experience variable as it pertains to the fraudulent variable.
 ```{r, fig.width=9, echo=FALSE}
@@ -122,15 +145,19 @@ jobs_train %>%
   ggplot(aes(x = as.factor(has_company_logo))) +
   geom_bar(aes(fill = as.factor(fraudulent)), position = "fill") +
   ggtitle("Fraudulent Versus Legitimate Job Postings, by Inclusion of Company Logo") +
-  labs(x = "Has Company Logo", fill= "Fraudulent")
+  labs(x = "Job Posting Has Company Logo", fill= "Fraudulent")
 ```
 
-3. This table shows that a job posting is overwhelmingly likely to be legitimate if it contains the company logo and has questions.
+3. This graph shows that a job posting is overwhelmingly likely to be legitimate if it contains both the company logo and has questions.
 ```{r, echo=FALSE}
 jobs_train %>%
   filter(has_company_logo == 1, has_questions == 1) %>%
-  count(fraudulent)
-```
+  ggplot(aes(x = as.factor(fraudulent))) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  ggtitle("Fraudulent Versus Legitimate Job Postings, by Inclusion of Company Logo and Questions") +
+  labs(x = "Fraudulent?")
+``` 
 
 
 4. This plot filters for job location within the United States, showing that more than half of the job postings within the data are domestic.
@@ -139,6 +166,7 @@ jobs_train %>%
   filter(str_detect(location, 'US,')) %>%
   ggplot(aes(x = as.factor(fraudulent))) +
   geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
   ggtitle("Fraudulent Versus Legitimate Job Postings, United States") +
   labs(x = "Fraudulent")
 ```
@@ -158,6 +186,10 @@ jobs_train %>%
 ```
 
 # Building Models
+
+Here, we build 6 classification models to predict fraudulent job postings. For this rough draft, we include output for all six models, although we plan to add more models and only show output for our best models for the final draft. 
+
+It is important to note that we use **sampling="down"** in the trainControl function, which decreases the accuracies but provides more useful specificities and sensitivities.
 
 **Model1: Log Model With Select Variables**
 ```{r}
@@ -194,7 +226,7 @@ confusionMatrix(data = predict(jobs_log_model_1,
 ```
 
 ROC:
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 #d = actual status, m = predicted probability
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_log_model_1, type = "prob")$`1`) %>%
@@ -205,7 +237,7 @@ jobs_train %>%
 ```
 
 AUC:
-```{r, echo=FALSE}
+```{r, eval=FALSE, echo=FALSE}
 #roc(actual_class, predicted_probability)
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_log_model_1, type = "prob")$`1`) %>%
@@ -222,7 +254,7 @@ jobs_log_model_2 <- train(
     data = jobs_train,
     method = "glm",
     family = "binomial",
-    trControl = trainControl(method = "cv", number = 5),
+    trControl = trainControl(method = "cv", number = 5, sampling = "down"),
     metric = "Accuracy",
     na.action = na.omit
 )
@@ -240,7 +272,7 @@ jobs_log_model_2$results$Accuracy
 ```
 
 Confusion Matrix
-```{r, echo=FALSE}
+```{r, eval=FALSE, echo=FALSE}
 confusionMatrix(data = as.factor(ifelse(predict(jobs_log_model_2$finalModel, 
                                type = "response") > 0.5, "1", "0")) ,
                 reference = as.factor(jobs_train$fraudulent),
@@ -261,7 +293,7 @@ jobs_log_model_3 <- train(
     data = jobs_train,
     method = "glm",
     family = "binomial",
-    trControl = trainControl(method = "cv", number = 5),
+    trControl = trainControl(method = "cv", number = 5, sampling = "down"),
     metric = "Accuracy",
     na.action = na.omit
 )
@@ -275,17 +307,17 @@ summary(jobs_log_model_3) %>%
 
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, echo=FALSE}
 jobs_log_model_3$results$Accuracy
 ```
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 jobs_train %>%
    mutate_if(is.character, as.factor) %>%
    summary()
 ```
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 confusionMatrix(data = as.factor(ifelse(predict(jobs_log_model_3$finalModel, 
                                type = "response") > 0.5, "1", "0")) ,
                 reference = as.factor(jobs_train$fraudulent),
@@ -297,9 +329,9 @@ length(as.factor(jobs_train$fraudulent))
 ```
 
 
-```{r}
-confusionMatrix(data = predict(jobs_log_model_3, 
-                               type = "raw"),
+```{r, eval=FALSE, echo=FALSE}
+confusionMatrix(data = as.factor(predict(jobs_log_model_3, 
+                               type = "prob")),
                 reference = as.factor(jobs_train$fraudulent),
                 positive = "1")
 ```
@@ -317,7 +349,7 @@ jobs_lasso <- train(
     data = jobs_train,
     method = "glmnet",
     family = "binomial",
-    trControl = trainControl(method = "cv", number = 5),
+    trControl = trainControl(method = "cv", number = 5, sampling = "down"),
     tuneGrid = data.frame(alpha = 1, 
                           lambda = lambda_grid),
     metric = "Accuracy",
@@ -326,7 +358,7 @@ jobs_lasso <- train(
 ```
 
 Plot of Lambda vs Accuracy
-```{r}
+```{r, echo=FALSE}
 jobs_lasso$results %>% 
   ggplot(aes(x = lambda, y = Accuracy)) +
   geom_line() +
@@ -343,7 +375,7 @@ jobs_lasso$results %>%
   head(n = 1)
 ```
 
-```{r, echo=FALSE}
+```{r, eval=FALSE, echo=FALSE}
 confusionMatrix(data = as.factor(ifelse(predict(jobs_lasso$finalModel,
                                type = "response") > 0.5, "1", "0")) ,
                 reference = as.factor(jobs_train$fraudulent),
@@ -359,7 +391,7 @@ jobs_tree <- train(
   data = jobs_train,
   method = "rpart",
   tuneGrid = data.frame(cp = seq(0, .05, length = 20)),
-  trControl = trainControl(method = "cv", number = 5),
+  trControl = trainControl(method = "cv", number = 5, sampling = "down"),
   metric = "Accuracy",
   na.action = na.omit
 )
@@ -381,7 +413,7 @@ jobs_tree$results %>%
   head(n = 1)
 ```
 
-```{r, echo=FALSE}
+```{r, eval=FALSE, echo=FALSE}
 confusionMatrix(data = as.factor(ifelse(predict(jobs_tree$finalModel, 
                                type = "response") > 0.5, "1", "0")) ,
                 reference = as.factor(jobs_train$fraudulent),
@@ -396,7 +428,7 @@ jobs_randf <- train(
   as.factor(fraudulent) ~ description_numchar + comp_prof_numchar + domestic + employment_type + has_company_logo + n_miss_all + industry + required_education + required_experience + has_questions,
   data = jobs_train, 
   method = "rf",
-  trControl = trainControl(method = "oob"),
+  trControl = trainControl(method = "oob", sampling = "down"),
   tuneGrid = data.frame(mtry = 10),
   ntree = 100, 
   nodesize = 5, 
@@ -413,4 +445,67 @@ plot(jobs_randf$finalModel)
 jobs_randf$results
 ```
 
+| Model | Description | CV Accuracy |
+|-------|-------------|--------------|
+|jobs_log_model_1 |three binary variables| 0.8105623 |
+|jobs_log_model_2| three categorical variables| 0.533955 |
+|jobs_log_model_3| all relevant variables| 0.7502988 |
+|jobs_lasso| lambda = 0.007564633 | 0.7964006 |
+|**jobs_tree** | cp = 0 | **0.8418798**
+|**jobs_randf**| mtry = 10 | **0.8781726** |
 
+**From our initial models, it seems the classification tree and random forest models yield the highest cross-validated accuracies**
+
+# Running the Best Models on Test Data
+
+**Classification Tree Model: Test Data**
+```{r}
+set.seed(253)
+
+jobs_tree_test <- train(
+  as.factor(fraudulent) ~ description_numchar + comp_prof_numchar + domestic + employment_type + has_company_logo + n_miss_all + industry + required_education + required_experience + has_questions,
+  data = jobs_test,
+  method = "rpart",
+  tuneGrid = data.frame(cp = seq(0, .05, length = 20)),
+  trControl = trainControl(method = "cv", number = 5, sampling = "down"),
+  metric = "Accuracy",
+  na.action = na.omit
+)
+```
+
+```{r, echo=FALSE}
+jobs_tree$results %>%
+  arrange(desc(Accuracy)) %>%
+  head(n = 1)
+```
+
+**Random Forest Model: Test Data**
+```{r}
+set.seed(253)
+
+jobs_randf_test <- train(
+  as.factor(fraudulent) ~ description_numchar + comp_prof_numchar + domestic + employment_type + has_company_logo + n_miss_all + industry + required_education + required_experience + has_questions,
+  data = jobs_test, 
+  method = "rf",
+  trControl = trainControl(method = "oob", sampling = "down"),
+  tuneGrid = data.frame(mtry = 10),
+  ntree = 100, 
+  nodesize = 5, 
+  metric = "Accuracy",
+  na.action = na.omit
+)
+```
+
+```{r, echo=FALSE}
+jobs_randf_test$results
+```
+
+| Model | Description | CV Accuracy |
+|-------|-------------|--------------|
+|jobs_tree_test | cp = 0 | 0.8418798 |
+|**jobs_randf_test**| mtry = 10 | **0.8828125** |
+
+# Early Conclusions and Goals for Rest Of Project
+- The random forest model seems to be the best model for accurately predicting fraudulent job postings
+- We want to run more models, especially trying new variable combinations and interaction terms
+- We also want to fix up some code so we get confusion matrices, ROC's, and AUC's for all models
