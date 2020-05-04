@@ -63,11 +63,11 @@ jobs <- jobs %>%
 mutate_if(is.character, replace_na, replace = "Missing") %>%
 mutate(comp_prof_numchar = nchar(company_profile, type = "char", allowNA = FALSE, keepNA =NA),description_numchar = nchar(description, type = "char", allowNA = FALSE, keepNA =NA)) %>%
 mutate(domestic = sapply(strsplit(jobs$location, split = ',', fixed=TRUE), function(x) (x[1]))) %>% 
-mutate(domestic = ifelse(domestic == "US",1,0))
+mutate(domestic = ifelse(domestic != "US" | is.na(domestic),0,1))
 
-jobs <- jobs %>%
-  group_by(description,requirements) %>%
-  mutate(count = (ifelse(is.na(description)==FALSE & is.na(requirements)==FALSE,n(),1000))) %>% replace_with_na(replace = list(count = 1000))
+#jobs <- jobs %>%
+#  group_by(description,requirements) %>%
+#  mutate(count = (ifelse(is.na(description)==FALSE & is.na(requirements)==FALSE,n(),1000))) %>% replace_with_na(replace = list(count = 1000))
 
 #divide into training and testing
 set.seed(253) #first set the seed!
@@ -226,7 +226,7 @@ confusionMatrix(data = predict(jobs_log_model_1,
 ```
 
 ROC:
-```{r, echo=FALSE, eval=FALSE}
+```{r, echo=FALSE}
 #d = actual status, m = predicted probability
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_log_model_1, type = "prob")$`1`) %>%
@@ -237,7 +237,7 @@ jobs_train %>%
 ```
 
 AUC:
-```{r, eval=FALSE, echo=FALSE}
+```{r, echo=FALSE}
 #roc(actual_class, predicted_probability)
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_log_model_1, type = "prob")$`1`) %>%
@@ -271,10 +271,10 @@ CV Accuracy:
 jobs_log_model_2$results$Accuracy
 ```
 
-Confusion Matrix
-```{r, eval=FALSE, echo=FALSE}
-confusionMatrix(data = as.factor(ifelse(predict(jobs_log_model_2$finalModel, 
-                               type = "response") > 0.5, "1", "0")) ,
+Confusion Matrix:
+```{r, echo=FALSE}
+confusionMatrix(data = predict(jobs_log_model_2, newdata = jobs_train,
+                               type = "raw"),
                 reference = as.factor(jobs_train$fraudulent),
                 positive = "1")
 
@@ -284,12 +284,31 @@ confusionMatrix(data = as.factor(ifelse(predict(jobs_log_model_2$finalModel,
 #length(as.factor(jobs_train$fraudulent))
 ```
 
+ROC:
+```{r, echo=FALSE}
+jobs_train %>% 
+  mutate(PredStatus =  predict(jobs_log_model_2, newdata=jobs_train, type = "prob")$`1`) %>%
+  ggplot(aes(d = as.numeric(fraudulent), m = PredStatus)) + 
+  geom_roc(labelround = 2, size = 1,
+           linealpha = .5, pointalpha = .8) +
+  geom_abline(slope = 1, intercept = 0, color = "gray")
+```
+
+AUC:
+```{r, echo=FALSE}
+jobs_train %>% 
+  mutate(PredStatus =  predict(jobs_log_model_1, type = "prob")$`1`) %>%
+  roc(fraudulent ~ PredStatus, data=.) %>% 
+  auc()
+```
+
+
 **Model 3: Log Model With All Relevant Variables **
 ```{r}
 set.seed(253)
 
 jobs_log_model_3 <- train(
-    as.factor(fraudulent) ~  description_numchar + comp_prof_numchar + domestic + employment_type_new + has_company_logo + n_miss_all + industry + required_education + required_experience + has_questions,
+    as.factor(fraudulent) ~  description_numchar + comp_prof_numchar + domestic + employment_type + has_company_logo + n_miss_all + industry + required_education + required_experience + has_questions,
     data = jobs_train,
     method = "glm",
     family = "binomial",
@@ -306,34 +325,35 @@ summary(jobs_log_model_3) %>%
 ```
 
 
-
-```{r, echo=FALSE, echo=FALSE}
+CV Accuracy:
+```{r, echo=FALSE}
 jobs_log_model_3$results$Accuracy
 ```
 
-```{r, eval=FALSE, echo=FALSE}
-jobs_train %>%
-   mutate_if(is.character, as.factor) %>%
-   summary()
-```
-
-```{r, eval=FALSE, echo=FALSE}
-confusionMatrix(data = as.factor(ifelse(predict(jobs_log_model_3$finalModel, 
-                               type = "response") > 0.5, "1", "0")) ,
+Confusion Matrix:
+```{r, echo=FALSE}
+confusionMatrix(data = predict(jobs_log_model_3, newdata = jobs_train,
+                               type = "raw"),
                 reference = as.factor(jobs_train$fraudulent),
                 positive = "1")
-length(as.factor(ifelse(predict(jobs_log_model_3$finalModel, 
-                               type = "response") > 0.1, "1", "0")))
-
-length(as.factor(jobs_train$fraudulent))
 ```
 
+ROC:
+```{r, echo=FALSE}
+jobs_train %>% 
+  mutate(PredStatus =  predict(jobs_log_model_3, newdata=jobs_train, type = "prob")$`1`) %>%
+  ggplot(aes(d = as.numeric(fraudulent), m = PredStatus)) + 
+  geom_roc(labelround = 2, size = 1,
+           linealpha = .5, pointalpha = .8) +
+  geom_abline(slope = 1, intercept = 0, color = "gray")
+```
 
-```{r, eval=FALSE, echo=FALSE}
-confusionMatrix(data = as.factor(predict(jobs_log_model_3, 
-                               type = "prob")),
-                reference = as.factor(jobs_train$fraudulent),
-                positive = "1")
+AUC:
+```{r, echo=FALSE}
+jobs_train %>% 
+  mutate(PredStatus =  predict(jobs_log_model_3, newdata = jobs_train, type = "prob")$`1`) %>%
+  roc(fraudulent ~ PredStatus, data=.) %>% 
+  auc()
 ```
 
 
@@ -365,21 +385,41 @@ jobs_lasso$results %>%
   scale_x_log10()
 ```
 
+Best Lambda Value:
 ```{r, echo=FALSE}
 jobs_lasso$bestTune$lambda
 ```
 
+CV Accuracy:
 ```{r, echo=FALSE}
 jobs_lasso$results %>%
   arrange(desc(Accuracy)) %>%
   head(n = 1)
 ```
 
-```{r, eval=FALSE, echo=FALSE}
-confusionMatrix(data = as.factor(ifelse(predict(jobs_lasso$finalModel,
-                               type = "response") > 0.5, "1", "0")) ,
+Confusion Matrix:
+```{r, echo=FALSE}
+confusionMatrix(data = predict(jobs_lasso, newdata = jobs_train, type = "raw"),
                 reference = as.factor(jobs_train$fraudulent),
                 positive = "1")
+```
+
+ROC:
+```{r, echo=FALSE}
+jobs_train %>% 
+  mutate(PredStatus =  predict(jobs_lasso, newdata=jobs_train, type = "prob")$`1`) %>%
+  ggplot(aes(d = as.numeric(fraudulent), m = PredStatus)) + 
+  geom_roc(labelround = 2, size = 1,
+           linealpha = .5, pointalpha = .8) +
+  geom_abline(slope = 1, intercept = 0, color = "gray")
+```
+
+AUC:
+```{r, echo=FALSE}
+jobs_train %>% 
+  mutate(PredStatus =  predict(jobs_lasso, newdata = jobs_train, type = "prob")$`1`) %>%
+  roc(fraudulent ~ PredStatus, data=.) %>% 
+  auc()
 ```
 
 **Model 5: Classification Tree**
@@ -397,27 +437,50 @@ jobs_tree <- train(
 )
 ```
 
+CP vs. Accuracy Graph:
 ```{r, echo=FALSE}
 jobs_tree$results %>% 
   ggplot(aes(x = cp, y = Accuracy)) +
-  geom_point()
+  geom_point() +
+  geom_line()
 ```
 
+Best CP:
 ```{r, echo=FALSE}
 jobs_tree$bestTune$cp
 ```
 
+CV Accuracy:
 ```{r, echo=FALSE}
 jobs_tree$results %>%
   arrange(desc(Accuracy)) %>%
   head(n = 1)
 ```
 
-```{r, eval=FALSE, echo=FALSE}
-confusionMatrix(data = as.factor(ifelse(predict(jobs_tree$finalModel, 
-                               type = "response") > 0.5, "1", "0")) ,
+Confusion Matrix:
+```{r, echo=FALSE}
+confusionMatrix(data = predict(jobs_tree, newdata = jobs_train,
+                               type = "raw"),
                 reference = as.factor(jobs_train$fraudulent),
                 positive = "1")
+```
+
+ROC:
+```{r, echo=FALSE}
+jobs_train %>% 
+  mutate(PredStatus =  predict(jobs_tree, newdata = jobs_train, type = "prob")$`1`) %>%
+  ggplot(aes(d = as.numeric(fraudulent), m = PredStatus)) + 
+  geom_roc(labelround = 2, size = 1,
+           linealpha = .5, pointalpha = .8) +
+  geom_abline(slope = 1, intercept = 0, color = "gray")
+```
+
+AUC:
+```{r, echo=FALSE}
+jobs_train %>% 
+  mutate(PredStatus =  predict(jobs_tree, newdata = jobs_train, type = "prob")$`1`) %>%
+  roc(fraudulent ~ PredStatus, data=.) %>% 
+  auc()
 ```
 
 **Model 6: Random Forest**
@@ -437,24 +500,54 @@ jobs_randf <- train(
 )
 ```
 
+Trees vs Error (Accuracy) Plot:
 ```{r, echo=FALSE}
 plot(jobs_randf$finalModel)
 ```
 
+CV Accuracy:
 ```{r, echo=FALSE}
 jobs_randf$results
 ```
 
-| Model | Description | CV Accuracy |
-|-------|-------------|--------------|
-|jobs_log_model_1 |three binary variables| 0.8105623 |
-|jobs_log_model_2| three categorical variables| 0.533955 |
-|jobs_log_model_3| all relevant variables| 0.7502988 |
-|jobs_lasso| lambda = 0.007564633 | 0.7964006 |
-|**jobs_tree** | cp = 0 | **0.8418798**
-|**jobs_randf**| mtry = 10 | **0.8781726** |
+Confusion Matrix:
+```{r, echo=FALSE}
+confusionMatrix(data = predict(jobs_randf, newdata = jobs_train, type = "raw"),
+                reference = as.factor(jobs_train$fraudulent),
+                positive = "1")
+```
 
-**From our initial models, it seems the classification tree and random forest models yield the highest cross-validated accuracies**
+
+ROC:
+```{r, echo=FALSE}
+jobs_train %>% 
+  mutate(PredStatus =  predict(jobs_randf, newdata = jobs_train, type = "prob")$`1`) %>%
+  ggplot(aes(d = as.numeric(fraudulent), m = PredStatus)) + 
+  geom_roc(labelround = 2, size = 1,
+           linealpha = .5, pointalpha = .8) +
+  geom_abline(slope = 1, intercept = 0, color = "gray")
+```
+
+AUC:
+```{r, echo=FALSE}
+jobs_train %>% 
+  mutate(PredStatus =  predict(jobs_randf, newdata = jobs_train, type = "prob")$`1`) %>%
+  roc(fraudulent ~ PredStatus, data=.) %>% 
+  auc()
+```
+
+
+# Model Summary
+| Model | Description | CV Accuracy | Training Accuracy | AUC |
+|-------|-------------|--------------|
+|jobs_log_model_1 |three binary variables|  | | |
+|jobs_log_model_2| three categorical variables|  |  | |
+|jobs_log_model_3| all relevant variables|  | | |
+|jobs_lasso| lambda = 0.007564633 |  | | |
+|**jobs_tree** | cp = 0 |  | |
+|**jobs_randf**| mtry = 10 |  | | |
+
+**From our initial models, it seems the classification tree and random forest models yield the highest cross-validated accuracies, training accuracies, and AUCs**
 
 # Running the Best Models on Test Data
 
@@ -473,11 +566,21 @@ jobs_tree_test <- train(
 )
 ```
 
+CV Accuracy:
 ```{r, echo=FALSE}
-jobs_tree$results %>%
+jobs_tree_test$results %>%
   arrange(desc(Accuracy)) %>%
   head(n = 1)
 ```
+
+AUC:
+```{r, echo=FALSE}
+jobs_test %>% 
+  mutate(PredStatus =  predict(jobs_tree_test, newdata = jobs_test, type = "prob")$`1`) %>%
+  roc(fraudulent ~ PredStatus, data=.) %>% 
+  auc()
+```
+
 
 **Random Forest Model: Test Data**
 ```{r}
@@ -496,14 +599,23 @@ jobs_randf_test <- train(
 )
 ```
 
+CV Accuracy:
 ```{r, echo=FALSE}
 jobs_randf_test$results
 ```
 
-| Model | Description | CV Accuracy |
-|-------|-------------|--------------|
-|jobs_tree_test | cp = 0 | 0.8418798 |
-|**jobs_randf_test**| mtry = 10 | **0.8828125** |
+AUC:
+```{r, echo=FALSE}
+jobs_test %>% 
+  mutate(PredStatus =  predict(jobs_randf_test, newdata = jobs_test, type = "prob")$`1`) %>%
+  roc(fraudulent ~ PredStatus, data=.) %>% 
+  auc()
+```
+
+| Model | Description | CV Accuracy | AUC |
+|-------|-------------|--------------|----|
+|jobs_tree_test | cp = 0 |  | |
+|jobs_randf_test| mtry = 10 |  | |
 
 # Early Conclusions and Goals for Rest Of Project
 - The random forest model seems to be the best model for accurately predicting fraudulent job postings
