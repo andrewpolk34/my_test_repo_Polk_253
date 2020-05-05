@@ -1,8 +1,10 @@
 ---
-title: "Finding Fraudulent Job Postings: A First Look"
+title: "For Real, or Fraud? Classification Modeling With Online Job Postings"
 author: "Liam Edwards-Gaherty, Matthew Plisko, Andrew Polk, Henry Smith"
 date: "4/23/2020"
-output: html_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -49,14 +51,22 @@ library(randomForest) #for bagging and random forests
 theme_set(theme_minimal())
 ```
 
-# Reading In The Data
-```{r}
-fake_job_postings <- read_csv("fake_job_postings.csv")
+```{r, echo=FALSE}
+jobs <- read_csv("fake_job_postings.csv")
 ```
 
-# Splitting the Data into Train and Test
-```{r}
-jobs <- fake_job_postings
+```{r, echo=FALSE}
+jobs <- jobs %>%
+add_n_miss(label = "n_miss")
+jobs <- jobs %>%
+mutate_if(is.character, replace_na, replace = "Missing") %>%
+mutate(comp_prof_numchar = nchar(company_profile, type = "char", allowNA = FALSE, keepNA =NA),description_numchar = nchar(description, type = "char", allowNA = FALSE, keepNA =NA)) %>%
+mutate(domestic = sapply(strsplit(jobs$location, split = ',', fixed=TRUE), function(x) (x[1]))) %>% 
+mutate(domestic = ifelse(domestic == "US",1,0))
+
+jobs <- jobs %>%
+  group_by(description,requirements) %>%
+  mutate(count = (ifelse(is.na(description)==FALSE & is.na(requirements)==FALSE,n(),1000))) %>% replace_with_na(replace = list(count = 1000))
 
 #divide into training and testing
 set.seed(253) #first set the seed!
@@ -74,7 +84,13 @@ table(jobs_test$fraudulent) %>% prop.table()
 ```
 
 
-# Five Exploratory Plots/Tables
+
+# Research Questions
+What are some universal signs of a fraudulent job posting?
+
+What classification model best identifies the fraudulent job postings in the dataset?
+
+#Exploratory Plots/Tables
 
 1. This plot explores the required_experience variable as it pertains to the fraudulent variable.
 ```{r, fig.width=9}
@@ -118,14 +134,4 @@ jobs_train %>%
   filter(str_detect(requirements, 'must')) %>%
   count(fraudulent)
 ```
-
-
-
-
-# Research Questions
-What are some universal signs of a fraudulent job posting?
-
-What classification model best identifies the fraudulent job postings in the dataset? 
-
-Can our model translate to detection of other fraudulent things like scam/spam email?
 
