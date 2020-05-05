@@ -88,9 +88,9 @@ table(jobs_test$fraudulent) %>% prop.table()
 
 For our final project, we used a dataset from Kaggle containing 17,800 online job postings, of which about 5% are fraudulent, fake job postings. Our research questions are:
 
-What are some universal signs of a fraudulent job posting? 
+**What are some universal signs of a fraudulent job posting? **
 
-What classification model best identifies the fraudulent job postings in the dataset?
+**What classification model best identifies the fraudulent job postings in the dataset?**
 
 In this report, we explain the data used, and we explore specific variables and their relationship with our response variable. We then summarize the models we built to predict fraudulent job postings, and we select our best models to test using test data. After selecting our best model, we form conclusions about its effectiveness and interpretability.
 
@@ -105,10 +105,11 @@ jobs %>%
 
 
 We made some modifications and additions to the dataset, including:
-* Replacing empty values with "Missing"
-* Generating a variable, **n_miss_all**, to count to amount of missing categories for each job posting
-* Generating variables that counted the amount of characters for the **company_profile** and **description** variables
-* Generating a binary variable, **domestic**, that designated a job as either domestic (US) or foreign
+
+- Replacing empty values with "Missing"
+- Generating a variable, **n_miss_all**, to count to amount of missing categories for each job posting
+- Generating variables that counted the amount of characters for the **company_profile** and **description** variables
+- Generating a binary variable, **domestic**, that designated a job as either domestic (US) or foreign
 
 Below is a description of key variables we use in the plots, tables, and models that follow:
 
@@ -139,7 +140,7 @@ Below is a description of key variables we use in the plots, tables, and models 
 # Exploratory Plots
 The plots below explore variables that we found had significant or interesting relationships with our response variable
 
-**1.** This plot explores the required_experience variable as it pertains to the fraudulent variable.
+**1.** This plot explores the required_experience variable as it pertains to the fraudulent variable. This plot shows that entry level jobs and executive jobs have the highest proportion of fraudulent job postings.
 ```{r, fig.width=9, echo=FALSE}
 jobs_train %>%
   ggplot(aes(x = required_experience, fill = as.factor(fraudulent))) +
@@ -147,9 +148,8 @@ jobs_train %>%
   ggtitle("Fraudulent Versus Legitimate Job Postings, by Required Experience") +
   labs(x = "Required Experience", y = "Proportion", fill = "Fraudulent")
 ```
-This plot shows that entry level jobs and executive jobs have the highest proportion of fraudulent job postings.
 
-**2.** This plot explore the has_company_logo variable as it pertain to the fraudulent variable.
+**2.** This plot explore the has_company_logo variable as it pertain to the fraudulent variable. The plot shows that job postings containing a company logo are much more likely to be legitimate postings.
 ```{r, echo=FALSE}
 jobs_train %>%
   ggplot(aes(x = as.factor(has_company_logo))) +
@@ -157,31 +157,29 @@ jobs_train %>%
   ggtitle("Fraudulent Versus Legitimate Job Postings, by Inclusion of Company Logo") +
   labs(x = "Job Posting Has Company Logo", fill= "Fraudulent")
 ```
-The plot shows that job postings containing a company logo are much more likely to be legitimate postings.
 
-**3.** The graph below shows that a job posting is overwhelmingly likely to be legitimate if it contains both the company logo and has questions.
-```{r, echo=FALSE}
+**3.** The graph below shows that a job posting is overwhelmingly likely to be legitimate if it contains both the company logo and has questions. While only 4.8% of the observations are fraudulent job postings, only 1.9% of observations containing both company logos and questions are fraudulent, showing the significance of this variable.
+```{r, echo=FALSE, fig.height=5}
 jobs_train %>%
   filter(has_company_logo == 1, has_questions == 1) %>%
   ggplot(aes(x = as.factor(fraudulent))) +
   geom_bar() +
-  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  geom_text(stat='count', aes(label=..count.., vjust=-.5)) +
   ggtitle("Fraudulent Versus Legitimate Job Postings, by Inclusion of Company Logo and Questions") +
   labs(x = "Fraudulent?")
 ``` 
-While only 4.8% of the observations are fraudulent job postings, only 1.9% of observations containing both company logos and questions are fraudulent, showing the significance of this variable.
 
-**4.** This plot filters for job location within the United States, showing that more than half of the job postings within the data are domestic.
-```{r, echo=FALSE}
+**4.** This plot filters for job location within the United States, showing that more than half of the job postings within the data are domestic. Domestic job postings are more likely to be fraudulent according to this plot: 6.8% percent of observations are fraudulent postings, compared to 4.8% in the entire dataset.
+
+```{r, echo=FALSE, fig.height=5}
 jobs_train %>%
   filter(str_detect(location, 'US,')) %>%
   ggplot(aes(x = as.factor(fraudulent))) +
   geom_bar() +
-  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  geom_text(stat='count', aes(label=..count.., vjust=-.5)) +
   ggtitle("Fraudulent Versus Legitimate Job Postings, United States") +
   labs(x = "Fraudulent")
 ```
-Domestic job postings are more likely to be fraudulent according to this plot: 6.8% percent of observations are fraudulent postings, compared to 4.8% in the entire dataset.
 
 **5.** This plot shows that legitimate job postings have longer company profile descriptions, so we consider this variable to be important.
 ```{r, echo=FALSE}
@@ -224,7 +222,7 @@ In analyzing the accuracies and AUCs, **jobs_tree** and **jobs_randf** were the 
 
 
 
-```{r, echo=FALSE}
+```{r, eval=FALSE, echo=FALSE}
 set.seed(253)
 
 jobs_log_model_1 <- train(
@@ -245,12 +243,12 @@ summary(jobs_log_model_1) %>%
 ```
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_log_model_1$results$Accuracy
 ```
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 confusionMatrix(data = predict(jobs_log_model_1, 
                                type = "raw"),
                 reference = as.factor(jobs_train$fraudulent),
@@ -258,7 +256,7 @@ confusionMatrix(data = predict(jobs_log_model_1,
 ```
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 #d = actual status, m = predicted probability
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_log_model_1, type = "prob")$`1`) %>%
@@ -269,7 +267,7 @@ jobs_train %>%
 ```
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 #roc(actual_class, predicted_probability)
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_log_model_1, type = "prob")$`1`) %>%
@@ -277,7 +275,7 @@ jobs_train %>%
   auc()
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 set.seed(253)
 
 jobs_log_model_2 <- train(
@@ -298,12 +296,12 @@ summary(jobs_log_model_2) %>%
 ```
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_log_model_2$results$Accuracy
 ```
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 confusionMatrix(data = predict(jobs_log_model_2, newdata = jobs_train,
                                type = "raw"),
                 reference = as.factor(jobs_train$fraudulent),
@@ -316,7 +314,7 @@ confusionMatrix(data = predict(jobs_log_model_2, newdata = jobs_train,
 ```
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_log_model_2, newdata=jobs_train, type = "prob")$`1`) %>%
   ggplot(aes(d = as.numeric(fraudulent), m = PredStatus)) + 
@@ -325,7 +323,7 @@ jobs_train %>%
   geom_abline(slope = 1, intercept = 0, color = "gray")
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_log_model_1, type = "prob")$`1`) %>%
   roc(fraudulent ~ PredStatus, data=.) %>% 
@@ -334,7 +332,7 @@ jobs_train %>%
 
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 set.seed(253)
 
 jobs_log_model_3 <- train(
@@ -355,18 +353,18 @@ summary(jobs_log_model_3) %>%
 ```
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_log_model_3$results$Accuracy
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 confusionMatrix(data = predict(jobs_log_model_3, newdata = jobs_train,
                                type = "raw"),
                 reference = as.factor(jobs_train$fraudulent),
                 positive = "1")
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_log_model_3, newdata=jobs_train, type = "prob")$`1`) %>%
   ggplot(aes(d = as.numeric(fraudulent), m = PredStatus)) + 
@@ -375,14 +373,14 @@ jobs_train %>%
   geom_abline(slope = 1, intercept = 0, color = "gray")
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_log_model_3, newdata = jobs_train, type = "prob")$`1`) %>%
   roc(fraudulent ~ PredStatus, data=.) %>% 
   auc()
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 set.seed(253)
 
 jobs_log_model_4 <- train(
@@ -397,18 +395,18 @@ jobs_log_model_4 <- train(
 ```
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_log_model_4$results$Accuracy
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 confusionMatrix(data = predict(jobs_log_model_4, newdata = jobs_train,
                                type = "raw"),
                 reference = as.factor(jobs_train$fraudulent),
                 positive = "1")
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_log_model_4, newdata=jobs_train, type = "prob")$`1`) %>%
   ggplot(aes(d = as.numeric(fraudulent), m = PredStatus)) + 
@@ -417,14 +415,14 @@ jobs_train %>%
   geom_abline(slope = 1, intercept = 0, color = "gray")
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_log_model_4, newdata = jobs_train, type = "prob")$`1`) %>%
   roc(fraudulent ~ PredStatus, data=.) %>% 
   auc()
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 set.seed(253)
 
 lambda_grid <- 10^seq(-4, -2, length = 100)
@@ -442,30 +440,30 @@ jobs_lasso <- train(
 )
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_lasso$results %>% 
   ggplot(aes(x = lambda, y = Accuracy)) +
   geom_line() +
   scale_x_log10()
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_lasso$bestTune$lambda
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_lasso$results %>%
   arrange(desc(Accuracy)) %>%
   head(n = 1)
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 confusionMatrix(data = predict(jobs_lasso, newdata = jobs_train, type = "raw"),
                 reference = as.factor(jobs_train$fraudulent),
                 positive = "1")
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_lasso, newdata=jobs_train, type = "prob")$`1`) %>%
   ggplot(aes(d = as.numeric(fraudulent), m = PredStatus)) + 
@@ -474,14 +472,14 @@ jobs_train %>%
   geom_abline(slope = 1, intercept = 0, color = "gray")
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_lasso, newdata = jobs_train, type = "prob")$`1`) %>%
   roc(fraudulent ~ PredStatus, data=.) %>% 
   auc()
 ```
 
-**jobs_randf: Classification Tree with 10 Variables**
+**jobs_tree: Classification Tree with 10 Variables**
 ```{r}
 set.seed(253)
 
@@ -595,7 +593,7 @@ jobs_train %>%
   auc()
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 set.seed(253)
 
 jobs_tree_select <- train(
@@ -609,31 +607,31 @@ jobs_tree_select <- train(
 )
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_tree_select$results %>% 
   ggplot(aes(x = cp, y = Accuracy)) +
   geom_point() +
   geom_line()
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_tree_select$bestTune$cp
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_tree_select$results %>%
   arrange(desc(Accuracy)) %>%
   head(n = 1)
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 confusionMatrix(data = predict(jobs_tree_select, newdata = jobs_train,
                                type = "raw"),
                 reference = as.factor(jobs_train$fraudulent),
                 positive = "1")
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_tree_select, newdata = jobs_train, type = "prob")$`1`) %>%
   ggplot(aes(d = as.numeric(fraudulent), m = PredStatus)) + 
@@ -642,7 +640,7 @@ jobs_train %>%
   geom_abline(slope = 1, intercept = 0, color = "gray")
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_tree_select, newdata = jobs_train, type = "prob")$`1`) %>%
   roc(fraudulent ~ PredStatus, data=.) %>% 
@@ -665,21 +663,21 @@ jobs_randf_select <- train(
 )
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 plot(jobs_randf_select$finalModel)
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_randf_select$results
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 confusionMatrix(data = predict(jobs_randf_select, newdata = jobs_train, type = "raw"),
                 reference = as.factor(jobs_train$fraudulent),
                 positive = "1")
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_randf_select, newdata = jobs_train, type = "prob")$`1`) %>%
   ggplot(aes(d = as.numeric(fraudulent), m = PredStatus)) + 
@@ -688,7 +686,7 @@ jobs_train %>%
   geom_abline(slope = 1, intercept = 0, color = "gray")
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_randf_select, newdata = jobs_train, type = "prob")$`1`) %>%
   roc(fraudulent ~ PredStatus, data=.) %>% 
@@ -762,8 +760,8 @@ jobs_test %>%
 
 | Model | Description | CV Accuracy | AUC |
 |-------|-------------|--------------|----|
-|jobs_tree_test | cp = 0 |  .8432157| .8162|
-|jobs_randf_test| mtry = 10 |  .8524904| .9576|
+|jobs_tree_test | cp = 0 |  .8432| .8162|
+|**jobs_randf_test**| mtry = 10 |  **.8525**| **.9576**|
 
 # Conclusion
 **The random forest model *jobs_randf* is the best model for accurately predicting fraudulent job postings. It had the highest accuracies and AUC quantities of any model we fit on both the training and testing data**
