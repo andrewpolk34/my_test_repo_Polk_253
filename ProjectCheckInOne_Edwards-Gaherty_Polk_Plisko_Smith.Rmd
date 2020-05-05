@@ -25,13 +25,15 @@ library(pROC) #for ROC curves
 library(plotROC) #for plotting ROC curves
 
 #making things look nice
+library(stringr)
 library(lubridate) #for nice dates
 library(knitr) #for nice tables
 library(scales) #for nice labels on graphs
 library(gridExtra) #for arranging plots
 library(broom) #for nice model output
 library(janitor) #for nice names
-
+library(naniar)
+library(dplyr)
 #data
 library(ISLR) #for data
 library(moderndive) #for data
@@ -51,10 +53,41 @@ library(randomForest) #for bagging and random forests
 theme_set(theme_minimal())
 ```
 
+<<<<<<< HEAD
 ```{r, echo=FALSE}
 jobs <- read_csv("fake_job_postings.csv")
+=======
+| Variable | Definition |
+|-----------|-----------|
+|job_id| Numbers that signifies the unique  job posting |
+| title | Job title |
+| location |  Where the job is located|
+| department | Which department the job is posted in |
+| salary_range | Catagorical variable with different levels of salaries |
+| company_profile | Brief blurb that describes the company |
+| description | Brief blurb that describes the job|
+| requirements | Blurb that describes what is required for the job |
+| benefits | A description of the benefits of the job |
+|telecommuning | 1 if job is within the telecommunication field, 0 otherwise|
+|has_company_logo | 1 if job posting has logo on posting, 0 otherwise|
+| has_questions | 1 if job posting has a question in their posting, 0 otherwise|
+| employment_type | Whether the position is full-time or part-time |
+| required_education | What level of education is required for the job |
+| industry | the industry where the job is posted |
+| function| type of job |
+| fraudulent| 1 if job post is fake, 0 otherwise |
+|n_miss_all | Number of missing entries in the dataset |
+|comp_prof_numchar| Number of characters in the company description |
+|description_numchar| Number of characters in the description of the job |
+| domestic | 1 if the job is in the U.S., 0 otherwise
+# Reading In The Data
+```{r}
+fake_job_postings <- read_csv("fake_job_postings.csv")
+>>>>>>> 44721b4b13df565356f98c9da72ab51831918769
 ```
+Function and industry. Department looks messed up. Fix NA. Count the number of na's in the row. Count the number of characters in the text.
 
+<<<<<<< HEAD
 ```{r, echo=FALSE}
 jobs <- jobs %>%
 add_n_miss(label = "n_miss")
@@ -68,6 +101,18 @@ jobs <- jobs %>%
   group_by(description,requirements) %>%
   mutate(count = (ifelse(is.na(description)==FALSE & is.na(requirements)==FALSE,n(),1000))) %>% replace_with_na(replace = list(count = 1000))
 
+=======
+# Splitting the Data into Train and Test
+```{r}
+jobs<-fake_job_postings%>%
+  add_n_miss(label= "n_miss") %>% 
+  mutate(comp_prof_numchar = nchar(company_profile, type = "char", allowNA = FALSE, keepNA =NA),description_numchar = nchar(description, type = "char", allowNA = FALSE, keepNA =NA)) %>%
+  mutate_if(is.character, replace_na, replace = "Missing")%>%
+  mutate(domestic = sapply(strsplit(jobs$location, split = ',', fixed=TRUE), function(x) (x[1]))) %>% 
+  mutate(domestic = ifelse(domestic == "US",1,0)) %>% 
+  mutate(ft_oil = ifelse(employment_type== "full-time"& industry== "Oil & Energy",1,0)) %>% group_by(description,requirements) %>%
+  mutate(count = (ifelse(is.na(description)==FALSE & is.na(requirements)==FALSE,n(),1000))) %>% replace_with_na(replace = list(count = 1000))
+>>>>>>> 44721b4b13df565356f98c9da72ab51831918769
 #divide into training and testing
 set.seed(253) #first set the seed!
 jobs_split <- initial_split(jobs, prop = .7, 
@@ -85,12 +130,16 @@ table(jobs_test$fraudulent) %>% prop.table()
 
 
 
+<<<<<<< HEAD
 # Research Questions
 What are some universal signs of a fraudulent job posting?
 
 What classification model best identifies the fraudulent job postings in the dataset?
 
 #Exploratory Plots/Tables
+=======
+# Five Exploratory Plots/Tables
+>>>>>>> 44721b4b13df565356f98c9da72ab51831918769
 
 1. This plot explores the required_experience variable as it pertains to the fraudulent variable.
 ```{r, fig.width=9}
@@ -98,7 +147,7 @@ jobs_train %>%
   ggplot(aes(x = required_experience, fill = as.factor(fraudulent))) +
   geom_bar(position = "fill") +
   ggtitle("Fraudulent Versus Legitimate Job Postings, by Required Experience") +
-  labs(x = "Required Experience", y = "Proportion", fill = "Fraudulent")
+  labs(x = "Required Experience", y= "Proportion", fill = "Fraudulent")
 ```
 
 2. This plot explore the has_company_logo variable as it pertain to the fraudulent variable.
@@ -135,3 +184,59 @@ jobs_train %>%
   count(fraudulent)
 ```
 
+<<<<<<< HEAD
+=======
+
+```{r}
+confusionMatrix(data = as.factor(ifelse(predict(jobs_log_model_2$finalModel,                                type = "response") > 0.5, "1", "0")) ,                reference = as.factor(jobs_train$fraudulent),            positive = "1")
+```
+6. Plot exploring if the number of characters in company profile there are lead to fraudulent jobs. 
+```{r}
+jobs_train %>%
+  ggplot(aes(x = description_numchar)) +
+  geom_bar(aes(fill = as.factor(fraudulent))) +
+  ggtitle("Fraudulent Versus Legitimate Job Postings, by Inclusion of Company Logo") +
+  labs(x = "Has Company Logo", fill= "Fraudulent")+ coord_cartesian(ylim=c(0,100),xlim=c(0,5000))
+```
+```{r}
+jobs_train %>%
+  ggplot(aes(x = domestic)) +
+  geom_bar(aes(fill = as.factor(fraudulent))) +
+  ggtitle("Fraudulent Versus Legitimate Job Postings, by Inclusion of Company Logo") +
+  labs(x = "Has Company Logo", fill= "Fraudulent")
+```
+```{r}
+set.seed(253)
+jobs_logmod_2 <- train(
+    as.factor(fraudulent) ~ telecommuting + has_company_logo + has_questions + employment_type + required_experience + required_education + n_miss_all + comp_prof_numchar + description_numchar + domestic + industry,
+    data = jobs_train,
+    method = "glm",
+    family = "binomial",
+    trControl = trainControl(method = "cv", number = 5),
+    metric = "Accuracy",
+    na.action = na.omit
+)
+
+# Model output
+
+summary(jobs_logmod_2) %>% 
+  coef() %>% 
+  tidy() %>% 
+  select(`.rownames`, Estimate) %>% 
+  mutate(exp_coef = exp(Estimate))
+
+```
+```{r}
+jobs_logmod_2$results
+```
+```{r}
+confusionMatrix(data = as.factor(ifelse(predict(jobs_logmod_2$finalModel, type = "response") > 0.5, "1", "0")) , reference = as.factor(jobs_train$fraudulent), positive = "1")
+```
+# Research Questions
+What are some universal signs of a fraudulent job posting?
+
+What classification model best identifies the fraudulent job postings in the dataset? 
+
+Can our model translate to detection of other fraudulent things like scam/spam email?
+
+>>>>>>> 44721b4b13df565356f98c9da72ab51831918769
