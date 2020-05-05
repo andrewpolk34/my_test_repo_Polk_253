@@ -539,13 +539,14 @@ jobs_train %>%
 
 # Model Summary
 | Model | Description | CV Accuracy | Training Accuracy | AUC |
-|-------|-------------|--------------|
-|jobs_log_model_1 |three binary variables|  | | |
-|jobs_log_model_2| three categorical variables|  |  | |
-|jobs_log_model_3| all relevant variables|  | | |
-|jobs_lasso| lambda = 0.007564633 |  | | |
-|**jobs_tree** | cp = 0 |  | |
-|**jobs_randf**| mtry = 10 |  | | |
+|-------|-------------|--------------|-------------|-------|
+|jobs_log_model_1 |three binary variables|  .8106| .7995| .7578|
+|jobs_log_model_2| three categorical variables|  .5339|  .5374| .7578|
+|jobs_log_model_3| all relevant variables|  .7672| .7725| .8889|
+|jobs_lasso| lambda = 0.007564633 |  .7815| .7933| .892|
+|**jobs_tree** | cp = 0 |  .8429| .8334|.9076|
+|**jobs_randf**| mtry = 10 |  .8661| .8786| 0.9572|
+adfnkajsdfnl.ansd
 
 **From our initial models, it seems the classification tree and random forest models yield the highest cross-validated accuracies, training accuracies, and AUCs**
 
@@ -614,8 +615,8 @@ jobs_test %>%
 
 | Model | Description | CV Accuracy | AUC |
 |-------|-------------|--------------|----|
-|jobs_tree_test | cp = 0 |  | |
-|jobs_randf_test| mtry = 10 |  | |
+|jobs_tree_test | cp = 0 |  .8432157| .8162|
+|jobs_randf_test| mtry = 10 |  .8524904| .9576|
 
 # Early Conclusions and Goals for Rest Of Project
 - The random forest model seems to be the best model for accurately predicting fraudulent job postings
