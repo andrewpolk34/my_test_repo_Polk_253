@@ -92,7 +92,7 @@ For our final project, we used a dataset from Kaggle containing 17,800 online jo
 
 **What classification model best identifies the fraudulent job postings in the dataset?**
 
-In this report, we explain the data used, and we explore specific variables and their relationship with our response variable. We then summarize the models we built to predict fraudulent job postings, and we select our best models to test using test data. After selecting our best model, we form conclusions about its effectiveness and interpretability.
+In this report, we explain the data used, and we explore specific variables and their relationship with our response variable. Some variables that we found had significant relationships with our response variable include has_company_logo and description_numchar. We then summarize the models we built to predict fraudulent job postings, and we select our best models to test using test data. After selecting our best model, a random forest model, we observe that it accurately predicts fraudulent job postings 85% of the time on sampled down data, and we form conclusions about its effectiveness and interpretability.
 
 # Data: Modifications and Challenges
 
@@ -494,7 +494,9 @@ jobs_tree <- train(
 )
 ```
 
-CP vs. Accuracy Graph:
+*CP vs. Accuracy Graph:*
+
+
 ```{r, echo=FALSE}
 jobs_tree$results %>% 
   ggplot(aes(x = cp, y = Accuracy)) +
@@ -502,19 +504,25 @@ jobs_tree$results %>%
   geom_line()
 ```
 
-Best CP:
+*Best CP:*
+
+
 ```{r, echo=FALSE}
 jobs_tree$bestTune$cp
 ```
 
-CV Accuracy:
+*CV Accuracy:* 
+
+
 ```{r, echo=FALSE}
 jobs_tree$results %>%
   arrange(desc(Accuracy)) %>%
   head(n = 1)
 ```
 
-Confusion Matrix:
+*Confusion Matrix:*
+
+
 ```{r, echo=FALSE}
 confusionMatrix(data = predict(jobs_tree, newdata = jobs_train,
                                type = "raw"),
@@ -522,7 +530,9 @@ confusionMatrix(data = predict(jobs_tree, newdata = jobs_train,
                 positive = "1")
 ```
 
-ROC:
+*ROC:*
+
+
 ```{r, echo=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_tree, newdata = jobs_train, type = "prob")$`1`) %>%
@@ -532,7 +542,9 @@ jobs_train %>%
   geom_abline(slope = 1, intercept = 0, color = "gray")
 ```
 
-AUC:
+*AUC:*
+
+
 ```{r, echo=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_tree, newdata = jobs_train, type = "prob")$`1`) %>%
@@ -557,17 +569,23 @@ jobs_randf <- train(
 )
 ```
 
-Trees vs Error (Accuracy) Plot:
+*Trees vs Error (Accuracy) Plot:*
+
+
 ```{r, echo=FALSE}
 plot(jobs_randf$finalModel)
 ```
 
-CV Accuracy:
+*CV Accuracy:*
+
+
 ```{r, echo=FALSE}
 jobs_randf$results
 ```
 
-Confusion Matrix:
+*Confusion Matrix:*
+
+
 ```{r, echo=FALSE}
 confusionMatrix(data = predict(jobs_randf, newdata = jobs_train, type = "raw"),
                 reference = as.factor(jobs_train$fraudulent),
@@ -575,7 +593,9 @@ confusionMatrix(data = predict(jobs_randf, newdata = jobs_train, type = "raw"),
 ```
 
 
-ROC:
+*ROC:*
+
+
 ```{r, echo=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_randf, newdata = jobs_train, type = "prob")$`1`) %>%
@@ -585,7 +605,9 @@ jobs_train %>%
   geom_abline(slope = 1, intercept = 0, color = "gray")
 ```
 
-AUC:
+*AUC:*
+
+
 ```{r, echo=FALSE}
 jobs_train %>% 
   mutate(PredStatus =  predict(jobs_randf, newdata = jobs_train, type = "prob")$`1`) %>%
@@ -712,14 +734,18 @@ jobs_tree_test <- train(
 )
 ```
 
-CV Accuracy:
+*CV Accuracy:*
+
+
 ```{r, echo=FALSE}
 jobs_tree_test$results %>%
   arrange(desc(Accuracy)) %>%
   head(n = 1)
 ```
 
-AUC:
+*AUC:*
+
+
 ```{r, echo=FALSE}
 jobs_test %>% 
   mutate(PredStatus =  predict(jobs_tree_test, newdata = jobs_test, type = "prob")$`1`) %>%
@@ -745,12 +771,16 @@ jobs_randf_test <- train(
 )
 ```
 
-CV Accuracy:
+*CV Accuracy:*
+
+
 ```{r, echo=FALSE}
 jobs_randf_test$results
 ```
 
-AUC:
+*AUC:*
+
+
 ```{r, echo=FALSE}
 jobs_test %>% 
   mutate(PredStatus =  predict(jobs_randf_test, newdata = jobs_test, type = "prob")$`1`) %>%
